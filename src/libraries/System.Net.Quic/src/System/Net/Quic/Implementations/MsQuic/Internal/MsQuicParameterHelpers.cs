@@ -77,7 +77,7 @@ namespace System.Net.Quic.Implementations.MsQuic.Internal
             };
 
             QuicExceptionHelpers.ThrowIfFailed(
-                api.UnsafeGetParam(nativeObject, level, param, ref buffer),
+                api.UnsafeSetParam(nativeObject, level, param, buffer),
                 "Could not set ulong.");
         }
 
@@ -106,7 +106,7 @@ namespace System.Net.Quic.Implementations.MsQuic.Internal
             };
 
             QuicExceptionHelpers.ThrowIfFailed(
-                api.UnsafeGetParam(nativeObject, level, param, ref buffer),
+                api.UnsafeSetParam(nativeObject, level, param, buffer),
                 "Could not set byte.");
         }
 
