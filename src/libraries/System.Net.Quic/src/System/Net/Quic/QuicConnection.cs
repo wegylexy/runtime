@@ -9,6 +9,8 @@ using System.Threading.Tasks;
 
 namespace System.Net.Quic
 {
+    public delegate void QuicDatagramReceivedEventHandler(object sender, ReadOnlySpan<byte> buffer);
+
     public sealed class QuicConnection : IDisposable
     {
         private readonly QuicConnectionProvider _provider;
@@ -129,7 +131,7 @@ namespace System.Net.Quic
         /// <summary>
         /// Occurs when a datagram is received.
         /// </summary>
-        public event EventHandler<ReadOnlySpan<byte>> DatagramReceived
+        public event QuicDatagramReceivedEventHandler DatagramReceived
         {
             add => _provider.DatagramReceived += value;
             remove => _provider.DatagramReceived -= value;

@@ -430,7 +430,7 @@ namespace System.Net.Quic.Implementations.MsQuic
 
         public override ushort DatagramMaxSendLength => _datagramMaxSendLength;
 
-        internal override event EventHandler<ReadOnlySpan<System.Byte>> DatagramReceived;
+        internal override event QuicDatagramReceivedEventHandler DatagramReceived;
 
         internal override async ValueTask<bool> SendDatagramAsync(ReadOnlyMemory<byte> buffer, bool priority)
         {

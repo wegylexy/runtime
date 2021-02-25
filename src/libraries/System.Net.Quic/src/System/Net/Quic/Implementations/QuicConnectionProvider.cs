@@ -36,7 +36,7 @@ namespace System.Net.Quic.Implementations
 
         internal abstract ushort DatagramMaxSendLength { get; }
 
-        internal abstract event EventHandler<ReadOnlySpan<byte>> DatagramReceived;
+        internal abstract event QuicDatagramReceivedEventHandler DatagramReceived;
 
         internal abstract ValueTask<bool> SendDatagramAsync(ReadOnlyMemory<byte> buffer, bool priority);
 

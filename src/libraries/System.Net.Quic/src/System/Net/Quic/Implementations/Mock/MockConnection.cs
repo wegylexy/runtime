@@ -229,7 +229,7 @@ namespace System.Net.Quic.Implementations.Mock
 
         internal override ushort DatagramMaxSendLength { get; }
 
-        internal override event EventHandler<ReadOnlySpan<System.Byte>> DatagramReceived;
+        internal override event QuicDatagramReceivedEventHandler DatagramReceived;
 
         internal override ValueTask<bool> SendDatagramAsync(ReadOnlyMemory<byte> buffer, bool priority) => ValueTask.FromResult(true);
 

@@ -36,6 +36,7 @@ namespace System.Net.Quic
         public TimeSpan IdleTimeout { get => throw null; set => throw null; }
         public bool DatagramReceiveEnabled { get => throw null; set => throw null; }
     }
+    public delegate void QuicDatagramReceivedEventHandler(object sender, ReadOnlySpan<byte> buffer);
     public sealed class QuicConnection : IDisposable
     {
         public QuicConnection(System.Net.EndPoint remoteEndPoint, System.Net.Security.SslClientAuthenticationOptions? sslClientAuthenticationOptions, System.Net.IPEndPoint? localEndPoint = null) { throw null; }
@@ -57,7 +58,7 @@ namespace System.Net.Quic
         public bool DatagramReceiveEnabled { get => throw null; set => throw null; }
         public bool DatagramSendEnabled { get => throw null; set => throw null; }
         public ushort DatagramMaxSendLength { get => throw null; }
-        public event EventHandler<ReadOnlySpan<byte>> DatagramReceived { add => throw null; remove => throw null; }
+        public event QuicDatagramReceivedEventHandler DatagramReceived { add => throw null; remove => throw null; }
         public System.Threading.Tasks.ValueTask<bool> SendDatagramAsync(ReadOnlyMemory<byte> buffer, bool priority = false) => throw null;
     }
     public class QuicClientConnectionOptions
