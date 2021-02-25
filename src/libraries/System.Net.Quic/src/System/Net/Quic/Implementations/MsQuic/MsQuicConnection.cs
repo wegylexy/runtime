@@ -215,7 +215,7 @@ namespace System.Net.Quic.Implementations.MsQuic
         {
             var state = connectionEvent.Data.DatagramSendStateChanged.State;
             GCHandle handle = GCHandle.FromIntPtr(connectionEvent.Data.DatagramSendStateChanged.ClientContext);
-            ref var source = ref (ManualResetValueTaskSourceCore<QUIC_DATAGRAM_SEND_STATE>)handle.Target!;
+            var source = (SendDatagramValueTaskSource)handle.Target!;
             switch (state)
             {
                 case QUIC_DATAGRAM_SEND_STATE.QUIC_DATAGRAM_SEND_LOST_DISCARDED:
@@ -418,44 +418,65 @@ namespace System.Net.Quic.Implementations.MsQuic
 
         internal override bool DatagramReceiveEnabled
         {
-            get => MsQuicParameterHelpers.GetByteParam(MsQuicApi.Api, _ptr, (uint)QUIC_PARAM_LEVEL.CONNECTION, (uint)QUIC_PARAM_CONN.DATAGRAM_RECEIVE_ENABLED);
+            get => MsQuicParameterHelpers.GetByteParam(MsQuicApi.Api, _ptr, (uint)QUIC_PARAM_LEVEL.CONNECTION, (uint)QUIC_PARAM_CONN.DATAGRAM_RECEIVE_ENABLED) != 0;
             set => MsQuicParameterHelpers.SetByteParam(MsQuicApi.Api, _ptr, (uint)QUIC_PARAM_LEVEL.CONNECTION, (uint)QUIC_PARAM_CONN.DATAGRAM_RECEIVE_ENABLED, (byte)(value ? 1 : 0));
         }
 
         internal override bool DatagramSendEnabled
         {
-            get => MsQuicParameterHelpers.GetByteParam(MsQuicApi.Api, _ptr, (uint)QUIC_PARAM_LEVEL.CONNECTION, (uint)QUIC_PARAM_CONN.DATAGRAM_SEND_ENABLED);
+            get => MsQuicParameterHelpers.GetByteParam(MsQuicApi.Api, _ptr, (uint)QUIC_PARAM_LEVEL.CONNECTION, (uint)QUIC_PARAM_CONN.DATAGRAM_SEND_ENABLED) != 0;
             set => MsQuicParameterHelpers.SetByteParam(MsQuicApi.Api, _ptr, (uint)QUIC_PARAM_LEVEL.CONNECTION, (uint)QUIC_PARAM_CONN.DATAGRAM_SEND_ENABLED, (byte)(value ? 1 : 0));
         }
 
-        public override ushort DatagramMaxSendLength => _datagramMaxSendLength;
+        internal override ushort DatagramMaxSendLength => _datagramMaxSendLength;
 
         internal override event QuicDatagramReceivedEventHandler DatagramReceived;
 
+        class SendDatagramValueTaskSource : IValueTaskSource<QUIC_DATAGRAM_SEND_STATE>
+        {
+            ManualResetValueTaskSourceCore<QUIC_DATAGRAM_SEND_STATE> _source;
+
+            public SendDatagramValueTaskSource(ManualResetValueTaskSourceCore<QUIC_DATAGRAM_SEND_STATE> source) => _source = source;
+
+            public QUIC_DATAGRAM_SEND_STATE GetResult(short token) => _source.GetResult(token);
+
+            public ValueTaskSourceStatus GetStatus(short token) => _source.GetStatus(token);
+
+            public void OnCompleted(Action<object> continuation, object state, short token, ValueTaskSourceOnCompletedFlags flags) => _source.OnCompleted(continuation, state, token, flags);
+
+            public short Version => _source.Version;
+
+            public void SetResult(QUIC_DATAGRAM_SEND_STATE result) => _source.SetResult(result);
+        }
+
         internal override async ValueTask<bool> SendDatagramAsync(ReadOnlyMemory<byte> buffer, bool priority)
         {
-            var source = new ManualResetValueTaskSourceCore<QUIC_DATAGRAM_SEND_STATE>();
+            SendDatagramValueTaskSource source = new(new());
             var sourceHandle = GCHandle.Alloc(source, GCHandleType.Pinned);
             using var handle = buffer.Pin();
             var quicBuffer = new QuicBuffer[1];
             quicBuffer[0].Length = (uint)buffer.Length;
-            quicBuffer[0].Buffer = (byte*)buffer.Pointer;
+            unsafe { quicBuffer[0].Buffer = (byte*)handle.Pointer; }
             var quicBufferHandle = GCHandle.Alloc(quicBuffer, GCHandleType.Pinned);
             try
             {
-                var status = MsQuicApi.Api.DatagramSendDelegate(
-                    _ptr,
-                    (QuicBuffer*)Marshal.UnsafeAddrOfPinnedArrayElement(quicBuffer, 0),
-                    1,
-                    (uint)(priority ? QUIC_SEND_FLAG.DGRAM_PRIORITY : QUIC_SEND_FLAG.NONE),
-                    sourceHandle.AddrOfPinnedObject());
-                QuicExceptionHelpers.ThrowIfFailed(status, "Failed to send a datagram to peer.");
+                unsafe
+                {
+                    var status = MsQuicApi.Api.DatagramSendDelegate(
+                        _ptr,
+                        (QuicBuffer*)Marshal.UnsafeAddrOfPinnedArrayElement(quicBuffer, 0),
+                        1,
+                        (uint)(priority ? QUIC_SEND_FLAG.DGRAM_PRIORITY : QUIC_SEND_FLAG.NONE),
+                        sourceHandle.AddrOfPinnedObject());
+                    QuicExceptionHelpers.ThrowIfFailed(status, "Failed to send a datagram to peer.");
+                }
                 return (await new ValueTask<QUIC_DATAGRAM_SEND_STATE>(source, source.Version)) switch
                 {
                     QUIC_DATAGRAM_SEND_STATE.QUIC_DATAGRAM_SEND_ACKNOWLEDGED => true,
                     QUIC_DATAGRAM_SEND_STATE.QUIC_DATAGRAM_SEND_ACKNOWLEDGED_SPURIOUS => false,
                     QUIC_DATAGRAM_SEND_STATE.QUIC_DATAGRAM_SEND_CANCELED => throw new OperationCanceledException("Datagram send canceled."),
-                    QUIC_DATAGRAM_SEND_STATE.QUIC_DATAGRAM_SEND_LOST_DISCARDED => throw new QuicException("Datagram lost discarded.")
+                    QUIC_DATAGRAM_SEND_STATE.QUIC_DATAGRAM_SEND_LOST_DISCARDED => throw new QuicException("Datagram lost discarded."),
+                    _ => throw new QuicException("Unknown datagram send state.")
                 };
             }
             finally
