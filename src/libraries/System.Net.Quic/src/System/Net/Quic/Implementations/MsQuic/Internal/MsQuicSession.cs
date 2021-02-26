@@ -127,7 +127,7 @@ namespace System.Net.Quic.Implementations.MsQuic.Internal
             SetParam(param, buffer);
         }
 
-        private void SetDatagramReceiveEnabled(byte enabled)
+        public void SetDatagramReceiveEnabled(byte enabled)
         {
             SetByteParameter(QUIC_PARAM_SESSION.DATAGRAM_RECEIVE_ENABLED, enabled);
         }

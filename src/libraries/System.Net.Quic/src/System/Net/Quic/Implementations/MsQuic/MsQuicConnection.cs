@@ -430,7 +430,7 @@ namespace System.Net.Quic.Implementations.MsQuic
 
         internal override ushort DatagramMaxSendLength => _datagramMaxSendLength;
 
-        internal override event QuicDatagramReceivedEventHandler DatagramReceived;
+        internal override event QuicDatagramReceivedEventHandler? DatagramReceived;
 
         class SendDatagramValueTaskSource : IValueTaskSource<QUIC_DATAGRAM_SEND_STATE>
         {
@@ -442,7 +442,7 @@ namespace System.Net.Quic.Implementations.MsQuic
 
             public ValueTaskSourceStatus GetStatus(short token) => _source.GetStatus(token);
 
-            public void OnCompleted(Action<object> continuation, object state, short token, ValueTaskSourceOnCompletedFlags flags) => _source.OnCompleted(continuation, state, token, flags);
+            public void OnCompleted(Action<object?> continuation, object? state, short token, ValueTaskSourceOnCompletedFlags flags) => _source.OnCompleted(continuation, state, token, flags);
 
             public short Version => _source.Version;
 
